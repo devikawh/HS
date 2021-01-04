@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+	
+	<configuration-properties doc:name="Error Mapping Configuration properties" doc:id="9aca63d5-1edf-49a3-b986-3edb1fb3350d" file="properties/common-error-mappings.properties" />
+	<configuration-properties doc:name="Error Messages properties" doc:id="d9da9bfa-3e72-49d3-ac53-7d744c5fe436" file="properties/common-error-messages-en.properties" />
+	<sub-flow name="default-exit-logger-flow" doc:id="31e6e4da-5bc2-4aa6-a4ab-3107b324b577" >
+		<logger level="INFO" doc:name="Exiting global exception flow" doc:id="9cfa9db9-d913-4d89-8307-606309f1e5dc" message="Exiting global exception flow" />
+	</sub-flow>
+	<sub-flow name="default-entry-logger-flow" doc:id="1d500b21-c70d-4e49-a00e-c46f29fad2ef" >
+		<logger level="INFO" doc:name="Entered global exception flow" doc:id="e0af2be4-0507-4dfe-97d3-f5aae8a9cecf" message="Entered global exception flow" />
+	</sub-flow>
+	
+	<flow name="bad-request-error-flow" doc:id="8c1a77f1-5a2e-416c-8079-7383ceae8942" >
+		<set-variable value="#[error.description]" doc:name="Set Error Message" doc:id="67188c46-f03d-4a07-9d80-553394728e8a" variableName="vErrorMessage"/>
+		<flow-ref doc:name="default-error-flow" doc:id="b4755eb5-7374-4e81-b022-be67498ca614" name="default-error-flow"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e570f0b5-149c-408f-9517-bfaa629c37cf" type="ANY">
+				<logger level="ERROR" doc:name="Logger" doc:id="a1ef6ee5-1d73-4584-b115-88ccbebaa3e6" message="Error occured in the bad request error handling"/>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="default-error-flow" doc:id="4fa99ba2-953b-4553-b55a-585a1438d6c2" >
+		<flow-ref doc:name="default-entry-logger-flow" doc:id="08f19f7f-d752-40b3-90e0-b2e56b6c7bc4" name="default-entry-logger-flow" />
+		<set-variable value="#[vars.vErrorProps.httpStatus]" doc:name="Set Http Status" doc:id="971a250c-2aee-41c7-8466-adf531b31b96" variableName="httpStatus" />
+		<ee:transform doc:name="Transform Message" doc:id="cb4ad033-9caf-4089-ba7e-b67c5b8a0219" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"transactionId": vars.vCorrelationId,
+	"errorCode": vars.vErrorProps.errorCode,
+	"errorMessage": if(isBlank(vars.vErrorMessage)) vars.vErrorProps.errorMessage else vars.vErrorMessage,
+	"timeStamp": now() as String {format: p('date.time.format') } 
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="default-exit-logger-flow" doc:id="7bada3f4-7bf7-4afa-8af5-0f960a21c186" name="default-exit-logger-flow" />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="ccda9635-c89a-466b-ba32-6f8fc5e8cc8a" type="ANY">
+				<logger level="ERROR" doc:name="Logger" doc:id="577a740c-d096-4a4a-a12b-4d19baf43285" message="Error occured in the common default error handling"/>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<error-handler name="global-error-handler" doc:id="1f9a819f-d442-4fee-8e03-1cc46d80d55b" >
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="97b8e133-b9ba-4f00-aedb-f2da8c350b3d" type="ANY" >
+			<flow-ref doc:name="default-entry-logger-flow" doc:id="9a434d60-b4eb-400a-b578-9e766c02f2ae" name="default-entry-logger-flow" />
+			<ee:transform doc:name="Calculate Error Properties" doc:id="ebccb090-3cb8-42eb-8a0a-40348f59fce0">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="vErrorProps"><![CDATA[%dw 2.0
+output application/java
+var errorType = if (isBlank(p(error.errorType.identifier as String ++'.error.code'))) "default" else (error.errorType.identifier as String)
+var errorFlow = if (isBlank(p(errorType as String ++'.error.flow'))) p('default.error.flow') else (p(errorType as String ++'.error.flow'))
+var errorCode = if (isBlank(p(errorType as String ++'.error.code'))) p('default.error.code') else (p(errorType as String ++'.error.code'))
+---
+{
+	httpStatus : p(errorType as String ++'.error.http.status'),
+	errorCode : p('error.code.prefix') ++ errorCode,
+	errorMessage : p(errorCode as String),
+	errorFlow : errorFlow
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Invoke Error Flow" doc:id="d5656ba0-c922-466c-af46-b318525c0f27" name="#[vars.vErrorProps.errorFlow]" />
+			<flow-ref doc:name="default-exit-logger-flow" doc:id="2456c4be-f6b9-4661-936f-44ce0fb9d45b" name="default-exit-logger-flow" />
+		</on-error-continue>
+	</error-handler>
+	
+</mule>
