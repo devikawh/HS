@@ -1,0 +1,13 @@
+http:
+  host: "0.0.0.0"
+  port: "8092"
+  basepath: "/api/v1"
+  api:
+    timeout: "7200000"
+    console: "started"
+    
+    
+
+api:
+  id: "16465290"
+  flowName: "e-hs-authtication-main"

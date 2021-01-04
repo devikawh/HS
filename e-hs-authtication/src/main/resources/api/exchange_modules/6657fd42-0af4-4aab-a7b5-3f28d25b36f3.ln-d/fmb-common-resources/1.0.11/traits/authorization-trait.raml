@@ -1,0 +1,20 @@
+#%RAML 1.0 Trait
+usage: Apply this trait to any API that needs JWT Authentication.
+description: The service endpoint requires authentication for every API request.
+headers:
+  Authorization:
+    description: Bearer 
+    type: string
+    required: true
+    example: 432token438
+responses:
+ 400:
+   description: Token was not provided.
+ 401:
+   description: Bad or expired token. To fix, you should re-authenticate the user.
+ 403:
+   description: The client id validation failed.
+ 503:
+   description: Error communicating with JWKS server.
+
+      

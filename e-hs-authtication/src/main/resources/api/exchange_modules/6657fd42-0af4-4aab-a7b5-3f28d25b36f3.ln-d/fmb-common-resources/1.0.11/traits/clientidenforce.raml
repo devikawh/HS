@@ -1,0 +1,24 @@
+#%RAML 1.0 Trait
+usage: Apply this trait to any API that needs to enforce client id Authentication.
+description: The service endpoint requires authentication for every API request.
+headers:
+  client_id:
+    description: The client_id of the API consumer/ requester
+    type: string
+    required: true
+    example: 2fb3895e9710d4533bX2C5UJ2QAR2MAAIT5Qe60ECB04
+
+  client_secret:
+    description: The client_secret of the API consumer/ requester
+    type: string
+    required: true
+    example: 2fb3895e9710d4533bX2C5UJ2QAR2MAAIT5Qe60ECB04
+responses:
+ 401:
+   description: Unauthorized, The client_id or client_secret are not valid or the client does not have access.
+ 429:
+   description: The client used all of it's request quota for the current period.
+ 500:
+   description: An error ocurred, see the specific message (Only if it is a WSDL enpoint).
+ 503:
+   description: Contracts Information Unreachable. 

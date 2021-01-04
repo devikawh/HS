@@ -1,0 +1,25 @@
+#%RAML 1.0
+title: e-hs-authtication
+version: v1
+
+
+uses:
+  commonUtil: exchange_modules/6657fd42-0af4-4aab-a7b5-3f28d25b36f3.ln-d/fmb-common-resources/1.0.11/fmb-common-resources.raml
+  authication: library/authication-library.raml
+
+
+/authtication:
+  post:
+    is: [commonUtil.errorResponse,commonUtil.clientIdEnforce]
+    displayName: Create an individual customer record
+    description: This method is used to create an individual customer record in core banking system
+    body:
+      application/json:
+        type: authication.Input
+        example: !include  examples/request-input.json
+    responses:
+      200:
+        body:
+          application/json:
+            type: authication.Output
+            example: !include examples/response-output.json    
